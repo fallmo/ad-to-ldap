@@ -1,0 +1,27 @@
+---
+- name: Import AD users to OpenLdap
+  hosts: ad-and-ldap
+
+  vars:
+    ad_src_file: 'C:\Users\d3143\Documents\ad-diff\file.ldif'
+    ad_users_file: "./ad_users.txt"
+    ldap_users_file: "./ldap_users.ldif"
+
+  tasks:
+    - name: Get AD users
+      win_shell: 'ldifde -f {{ ad_src_file }} -s douanes.sn -d "OU=Points Focaux, OU=Douane Utilisateurs,DC=douanes,DC=sn" -r "(objectClass=user)" -p subtree'
+      when: ansible_os_family == 'Windows'
+
+    # - name: Save ad users to file
+    #   win_fetch:
+    #     src: "{{ ad_src_file }}"
+    #     dest: "{{ ad_users_file }}"
+    #   when: ansible_os_family == 'Windows'
+
+    # - name: Run nodejs script to format ad output to openldap ldif
+    #   command: AD_FILE={{ ad_users_file }} LDAP_FILE={{ ldap_users_file }} node ./ad-to-ldap.js
+    #   when: ansible_os_family !== 'Windows'
+
+    # - name: Import newly created ldif file
+    #   command: ldapadd -x -f {{ ldap_users_file }} -D "cn=Admin,dc=douanes,dc=sn" -w $LDAP_PASSWORD
+    #   when: ansible_os_family !== 'Windows'
