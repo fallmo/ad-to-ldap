@@ -1,27 +1,38 @@
 ---
 - name: Import AD users to OpenLdap
   hosts: ad-and-ldap
+  gather_facts: false
+
+  vars_files:
+    - vault.yaml
 
   vars:
-    ad_src_file: 'C:\Users\d3143\Documents\ad-diff\file.ldif'
-    ad_users_file: "./ad_users.txt"
-    ldap_users_file: "./ldap_users.ldif"
+    ad_src_file: 'C:\Users\Administrator\Documents\ad_users.txt'
+    ad_users_file: "ad_users.txt"
+    ldap_users_file: "ldap_users.ldif"
+    script_file: "ad-to-ldap.js"
 
   tasks:
     - name: Get AD users
-      win_shell: 'ldifde -f {{ ad_src_file }} -s douanes.sn -d "OU=Points Focaux, OU=Douane Utilisateurs,DC=douanes,DC=sn" -r "(objectClass=user)" -p subtree'
-      when: ansible_os_family == 'Windows'
+      ansible.windows.win_shell: 'ldifde -f {{ ad_src_file }} -s ldap.lan -d "CN=users,DC=ldap,DC=lan" -r "(objectClass=user)" -p subtree'
+      when: inventory_hostname == "ad_server"
 
-    # - name: Save ad users to file
-    #   win_fetch:
-    #     src: "{{ ad_src_file }}"
-    #     dest: "{{ ad_users_file }}"
-    #   when: ansible_os_family == 'Windows'
+    - name: Save ad users to file
+      fetch:
+        src: "{{ ad_src_file }}"
+        dest: "./"
+        flat: yes
+      when: inventory_hostname == "ad_server"
 
-    # - name: Run nodejs script to format ad output to openldap ldif
-    #   command: AD_FILE={{ ad_users_file }} LDAP_FILE={{ ldap_users_file }} node ./ad-to-ldap.js
-    #   when: ansible_os_family !== 'Windows'
+    - name: Run nodejs script to format ad output to openldap ldif
+      shell: AD_FILE="{{ playbook_dir + '/' + ad_users_file }}" LDAP_FILE="{{ playbook_dir + '/' + ldap_users_file }}" node {{ playbook_dir }}/ldif-convert.js
+      when: inventory_hostname == "localhost"
 
-    # - name: Import newly created ldif file
-    #   command: ldapadd -x -f {{ ldap_users_file }} -D "cn=Admin,dc=douanes,dc=sn" -w $LDAP_PASSWORD
-    #   when: ansible_os_family !== 'Windows'
+    - name: Copy ldif file to ldap
+      copy:
+        src: "{{ playbook_dir + '/' + ldap_users_file }}"
+        dest: "{{ ldap_users_file }}"
+
+    - name: Import newly created ldif file
+      shell: ldapadd -x -f {{ ldap_users_file }} -D "cn=Admin,dc=ldap,dc=lan" -w {{ ldap_password }}
+      when: inventory_hostname == "ldap_server"
