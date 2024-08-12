@@ -1,4 +1,4 @@
 [ad-and-ldap]
-ad_server ansible_host=192.168.14.204 ansible_user=Administrator ansible_connection=winrm ansible_winrm_transport=credssp ansible_password="@ccel@2024" ansible_port=5985 ansible_winrm_server_cert_validation=ignore
-ldap_server ansible_host=192.168.14.65 ansible_user=devops
-localhost ansible_host=127.0.0.1 ansible_user=root
+ad_server ansible_host=10.2.3.4 ansible_user='douanes\angom' ansible_connection=winrm ansible_winrm_transport=credssp ansible_password='{{ vault_agnom_password }}' ansible_port=5985 ansible_winrm_server_cert_validation=ignore
+ldap_server ansible_host=10.2.4.4 ansible_user=devops
+localhost ansible_host=127.0.0.1 ansible_user=devops

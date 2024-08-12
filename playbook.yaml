@@ -4,35 +4,59 @@
   gather_facts: false
 
   vars_files:
-    - vault.yaml
+  - ./vault.yaml
 
   vars:
-    ad_src_file: 'C:\Users\Administrator\Documents\ad_users.txt'
+    ad_src_file: 'C:\Users\angom\Documents\ad_users.txt'
     ad_users_file: "ad_users.txt"
+    ad_ou_src_file: 'C:\Users\angom\Documents\ad_ou.txt'
+    ad_ou_file: "ad_ou.txt"
     ldap_users_file: "ldap_users.ldif"
-    script_file: "ad-to-ldap.js"
+    ldap_ou_file: "ldap_ou.ldif"
+    script_file: "ldif-convert.js"
+
 
   tasks:
+    # enter windows ad node and run ldifde command to output all AD OUs onto file.
+    - name: Get AD Organizational Units
+      ansible.windows.win_shell: 'ldifde -f {{ ad_ou_src_file }} -s douanes.sn -d "DC=douanes,DC=sn" -r "(objectClass=organizationalUnit)" -p subtree'
+      when: inventory_hostname == "ad_server"
+    
+    # enter windows ad node and run ldifde command to output all AD users onto file.
     - name: Get AD users
-      ansible.windows.win_shell: 'ldifde -f {{ ad_src_file }} -s ldap.lan -d "CN=users,DC=ldap,DC=lan" -r "(objectClass=user)" -p subtree'
+      ansible.windows.win_shell: 'ldifde -f {{ ad_src_file }} -s douanes.sn -d "OU=Points Focaux,OU=Douane - Utilisateurs,DC=douanes,DC=sn" -r "(objectClass=user)" -p subtree'
       when: inventory_hostname == "ad_server"
 
+
+    # Copies the newly generated users file from AD to local machine
     - name: Save ad users to file
       fetch:
-        src: "{{ ad_src_file }}"
+        src: "{{ item }}"
         dest: "./"
         flat: yes
       when: inventory_hostname == "ad_server"
+      loop:
+      - "{{ ad_ou_src_file }}"
+      - "{{ ad_src_file }}"
 
+
+      # Runs nodejs script to format generated OUs file into acceptable ldif file
+    - name: Run nodejs script to format ad output to openldap ldif
+      shell: AD_FILE="{{ playbook_dir + '/' + ad_ou_file }}" LDAP_FILE="{{ playbook_dir + '/' + ldap_ou_file }}" node {{ playbook_dir }}/ldif-convert.js
+      when: inventory_hostname == "localhost"
+
+      # Runs nodejs script to format generated users file into acceptable ldif file
     - name: Run nodejs script to format ad output to openldap ldif
       shell: AD_FILE="{{ playbook_dir + '/' + ad_users_file }}" LDAP_FILE="{{ playbook_dir + '/' + ldap_users_file }}" node {{ playbook_dir }}/ldif-convert.js
       when: inventory_hostname == "localhost"
 
-    - name: Copy ldif file to ldap
-      copy:
-        src: "{{ playbook_dir + '/' + ldap_users_file }}"
-        dest: "{{ ldap_users_file }}"
 
-    - name: Import newly created ldif file
-      shell: ldapadd -x -f {{ ldap_users_file }} -D "cn=Admin,dc=ldap,dc=lan" -w {{ ldap_password }}
+     # Run ldapadd to add the OUs to ldap using the newly converted ldif file
+    - name: Import newly created OUs ldif
+      shell: ldapadd -x -f "{{ playbook_dir + '/' + ldap_ou_file }}" -D "cn=Admin,dc=douanes,dc=sn" -w {{ ldap_password }}
       when: inventory_hostname == "ldap_server"
+     
+      # Run ldapadd to add the users to ldap using the newly converted ldif file
+     #- name: Import newly created ldif file
+     # shell: ldapadd -x -f {{ ldap_users_file }} -D "cn=Admin,dc=douanes,dc=sn" -w {{ ldap_password }}
+     #when: inventory_hostname == "ldap_server"

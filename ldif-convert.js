@@ -58,6 +58,7 @@ function parseDataFromRaw(data) {
     .filter((blk) => !!blk);
 
   const users = [];
+  const organizationalUnits = [];
   const otherData = [];
 
   for (const block of dataBlocks) {
@@ -65,7 +66,10 @@ function parseDataFromRaw(data) {
 
     if (objectIsUser(object)) {
       object["uid"] = object.ntUserDomainId;
+      object["userPassword"] = "{SSHA}BwZ58YY9qeQu5Ln9dPhcCQrCIYcNCEa/";
       users.push(object);
+    } else if (objectIsOu(object)) {
+      organizationalUnits.push(object);
     } else {
       otherData.push(object);
     }
@@ -76,7 +80,7 @@ function parseDataFromRaw(data) {
     }
   }
 
-  return { users, otherData };
+  return { users, organizationalUnits, otherData };
 }
 
 function getObjectFromBlock(block) {
@@ -105,6 +109,12 @@ function objectIsUser(object) {
   );
 }
 
+function objectIsOu(object) {
+  return ["organizationalUnit"].some(
+    (klass) => object.objectClass.includes(klass)
+  );
+}
+
 function getKeyValFromLine(line) {
   let key;
   let val;
@@ -126,13 +136,14 @@ function decodeBase64(string) {
   return Buffer.from(string, "base64").toString("utf-8");
 }
 
-const relevantKeys = [
+const relevantUserKeys = [
   "dn",
   "displayName",
   "name",
   "cn",
   "ou",
   "uid",
+  "userPassword",
   "objectClass",
   "dNSHostName",
   "ntUserDomainId",
@@ -140,11 +151,35 @@ const relevantKeys = [
   "whenChanged",
 ];
 
+
+const relevantOUKeys = [
+  "dn",
+  "objectClass",
+  "dc",
+];
+
 function getOuptutDataFromUsers(users) {
   return users
     .map((user) =>
       Object.keys(user).reduce((output, key) => {
-        if (!relevantKeys.includes(key)) return output;
+        if (!relevantUserKeys.includes(key)) return output;
+        if (!Array.isArray(user[key])) output += `\n${key}: ${user[key]}`;
+        else {
+          user[key].forEach((val) => {
+            output += `\n${key}: ${val}`;
+          });
+        }
+        return output;
+      }, "")
+    )
+    .join("\n\n");
+}
+
+function getOuptutDataFromOUs(users) {
+  return users
+    .map((user) =>
+      Object.keys(user).reduce((output, key) => {
+        if (!relevantOUKeys.includes(key)) return output;
         if (!Array.isArray(user[key])) output += `\n${key}: ${user[key]}`;
         else {
           user[key].forEach((val) => {
@@ -160,18 +195,30 @@ function getOuptutDataFromUsers(users) {
 const ad_file = requireVariable("AD_FILE");
 const ldap_file = requireVariable("LDAP_FILE");
 
+function writeOUsToFile(ous) {
+  const data = getOuptutDataFromOUs(ous);
+  fs.writeFile(ldap_file, data, { encoding: "utf-8" })
+    .then(() => console.log("File written with OUs"))
+    .catch((err) => {
+      console.error(err, "Failed to write OUs to file");
+    });
+}
+
 function writeUsersToFile(users) {
   const data = getOuptutDataFromUsers(users);
-  fs.writeFile(ldap_file, data, { encoding: "utf-8" })
+  fs.appendFile(ldap_file, `\n\n${data}`, { encoding: "utf-8" })
     .then(() => console.log("File written with users"))
     .catch((err) => {
       console.error(err, "Failed to write users to file");
     });
 }
 
-fs.readFile(ad_file, { encoding: "utf-8" })
+fs.readFile(ad_file, { encoding: "latin1" })
   .then((fileData) => {
-    const { users, otherData } = parseDataFromRaw(fileData);
+    console.log(fileData);
+    const { users, organizationalUnits, otherData } = parseDataFromRaw(fileData);
+    console.log(users.length + " Users found; and " + organizationalUnits.length + " OUs found.");
+    writeOUsToFile(organizationalUnits);
     writeUsersToFile(users);
   })
   .catch((err) => {
