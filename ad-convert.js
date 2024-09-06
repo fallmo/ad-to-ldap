@@ -39,7 +39,7 @@ function parseDataFromRaw(data) {
     }
   }
 
-  return { users, organizationalUnits, otherData };
+  return { users, organizationalUnits, computers, otherData };
 }
 
 function getObjectFromBlock(block) {
