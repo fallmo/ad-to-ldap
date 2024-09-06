@@ -7,24 +7,27 @@
   - ./vault.yaml
 
   vars:
-    ad_src_file: 'C:\Users\angom\Documents\ad_users.txt'
-    ad_users_file: "ad_users.txt"
-    ad_ou_src_file: 'C:\Users\angom\Documents\ad_ou.txt'
-    ad_ou_file: "ad_ou.txt"
-    ldap_users_file: "ldap_users.ldif"
-    ldap_ou_file: "ldap_ou.ldif"
+    ad_workdir: 'C:\Users\Administrator\Documents\'
+    users_file: 'ad_users.ldif'
+    ous_file: 'ad_ous.ldif'
+    computers_file: 'ad_computers.ldif'
     script_file: "ldif-convert.js"
 
 
   tasks:
     # enter windows ad node and run ldifde command to output all AD OUs onto file.
     - name: Get AD Organizational Units
-      ansible.windows.win_shell: 'ldifde -f {{ ad_ou_src_file }} -s douanes.sn -d "DC=douanes,DC=sn" -r "(objectClass=organizationalUnit)" -p subtree'
+      ansible.windows.win_shell: 'ldifde -f {{ ad_workdir + ous_file }} -s douanes.lan -d "DC=douanes,DC=lan" -r "(objectClass=organizationalUnit)" -p subtree'
       when: inventory_hostname == "ad_server"
     
     # enter windows ad node and run ldifde command to output all AD users onto file.
     - name: Get AD users
-      ansible.windows.win_shell: 'ldifde -f {{ ad_src_file }} -s douanes.sn -d "OU=Points Focaux,OU=Douane - Utilisateurs,DC=douanes,DC=sn" -r "(objectClass=user)" -p subtree'
+      ansible.windows.win_shell: 'ldifde -f {{ ad_workdir + users_file }} -s douanes.sn -d "DC=douanes,DC=sn" -r "(objectClass=user)" -p subtree'
+      when: inventory_hostname == "ad_server"
+
+    # enter windows ad node and run ldifde command to output all AD computers onto file.
+    - name: Get AD computers
+      ansible.windows.win_shell: 'ldifde -f {{ ad_workdir + computers_file }} -s douanes.sn -d "DC=douanes,DC=sn" -r "(objectClass=computer)" -p subtree'
       when: inventory_hostname == "ad_server"
 
 
@@ -36,9 +39,9 @@
         flat: yes
       when: inventory_hostname == "ad_server"
       loop:
-      - "{{ ad_ou_src_file }}"
-      - "{{ ad_src_file }}"
-
+      - "{{ users_file }}"
+      - "{{ ous_file }}"
+      - "{{ computers_file }}"
 
       # Runs nodejs script to format generated OUs file into acceptable ldif file
     - name: Run nodejs script to format ad output to openldap ldif
