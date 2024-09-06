@@ -23,7 +23,6 @@ function parseDataFromRaw(data) {
     const object = getObjectFromBlock(block);
 
     if (objectIsUser(object)) {
-      object["userPassword"] = "{SSHA}BwZ58YY9qeQu5Ln9dPhcCQrCIYcNCEa/";
       object["pwdLastSet"] = 0;
       users.push(object);
     } else if (objectIsOu(object)) {
