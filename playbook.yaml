@@ -44,21 +44,35 @@
       - "{{ computers_file }}"
 
       # Runs nodejs script to format generated OUs file into acceptable ldif file
-    - name: Run nodejs script to format ad output to openldap ldif
-      shell: AD_FILE="{{ playbook_dir + '/' + ad_ou_file }}" LDAP_FILE="{{ playbook_dir + '/' + ldap_ou_file }}" node {{ playbook_dir }}/ldif-convert.js
+    - name: Run nodejs script to format ad OUs to openldap ldif
+      shell: AD_FILE="{{ playbook_dir + '/' + ous_file }}" LDAP_FILE="{{ playbook_dir + '/formatted-' + ous_file }}" node {{ playbook_dir }}/ldif-convert.js
       when: inventory_hostname == "localhost"
 
       # Runs nodejs script to format generated users file into acceptable ldif file
-    - name: Run nodejs script to format ad output to openldap ldif
-      shell: AD_FILE="{{ playbook_dir + '/' + ad_users_file }}" LDAP_FILE="{{ playbook_dir + '/' + ldap_users_file }}" node {{ playbook_dir }}/ldif-convert.js
+    - name: Run nodejs script to format ad users to openldap ldif
+      shell: AD_FILE="{{ playbook_dir + '/' + users_file }}" LDAP_FILE="{{ playbook_dir + '/formatted-' + users_file }}" node {{ playbook_dir }}/ldif-convert.js
       when: inventory_hostname == "localhost"
 
+      # Runs nodejs script to format generated computers file into acceptable ldif file
+    - name: Run nodejs script to format ad computers to openldap ldif
+      shell: AD_FILE="{{ playbook_dir + '/' + computers_file }}" LDAP_FILE="{{ playbook_dir + '/formatted-' + computers_file }}" node {{ playbook_dir }}/ldif-convert.js
+      when: inventory_hostname == "localhost"
 
      # Run ldapadd to add the OUs to ldap using the newly converted ldif file
     - name: Import newly created OUs ldif
-      shell: ldapadd -x -f "{{ playbook_dir + '/' + ldap_ou_file }}" -D "cn=Admin,dc=douanes,dc=sn" -w {{ ldap_password }}
+      shell: ldapadd -x -f "{{ playbook_dir + '/formatted-' + ous_file }}" -D "cn=Admin,dc=douanes,dc=sn" -w {{ ldap_password }}
       when: inventory_hostname == "ldap_server"
      
+     # Run ldapadd to add the OUs to ldap using the newly converted ldif file
+    - name: Import newly created Users ldif
+      shell: ldapadd -x -f "{{ playbook_dir + '/formatted-' + users_file }}" -D "cn=Admin,dc=douanes,dc=sn" -w {{ ldap_password }}
+      when: inventory_hostname == "ldap_server"
+
+     # Run ldapadd to add the OUs to ldap using the newly converted ldif file
+    - name: Import newly created Computers ldif
+      shell: ldapadd -x -f "{{ playbook_dir + '/formatted-' + computers_file }}" -D "cn=Admin,dc=douanes,dc=sn" -w {{ ldap_password }}
+      when: inventory_hostname == "ldap_server"
+
       # Run ldapadd to add the users to ldap using the newly converted ldif file
      #- name: Import newly created ldif file
      # shell: ldapadd -x -f {{ ldap_users_file }} -D "cn=Admin,dc=douanes,dc=sn" -w {{ ldap_password }}
