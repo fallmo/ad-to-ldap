@@ -11,7 +11,6 @@
     users_file: 'ad_users.ldif'
     ous_file: 'ad_ous.ldif'
     computers_file: 'ad_computers.ldif'
-    script_file: "ldif-convert.js"
 
 
   tasks:
@@ -45,17 +44,17 @@
 
       # Runs nodejs script to format generated OUs file into acceptable ldif file
     - name: Run nodejs script to format ad OUs to openldap ldif
-      shell: AD_FILE="{{ playbook_dir + '/' + ous_file }}" LDAP_FILE="{{ playbook_dir + '/formatted-' + ous_file }}" node {{ playbook_dir }}/ldif-convert.js
+      shell: AD_FILE="{{ playbook_dir + '/' + ous_file }}" LDAP_FILE="{{ playbook_dir + '/formatted-' + ous_file }}" node {{ playbook_dir }}/ad-convert.js
       when: inventory_hostname == "localhost"
 
       # Runs nodejs script to format generated users file into acceptable ldif file
     - name: Run nodejs script to format ad users to openldap ldif
-      shell: AD_FILE="{{ playbook_dir + '/' + users_file }}" LDAP_FILE="{{ playbook_dir + '/formatted-' + users_file }}" node {{ playbook_dir }}/ldif-convert.js
+      shell: AD_FILE="{{ playbook_dir + '/' + users_file }}" LDAP_FILE="{{ playbook_dir + '/formatted-' + users_file }}" node {{ playbook_dir }}/ad-convert.js
       when: inventory_hostname == "localhost"
 
       # Runs nodejs script to format generated computers file into acceptable ldif file
     - name: Run nodejs script to format ad computers to openldap ldif
-      shell: AD_FILE="{{ playbook_dir + '/' + computers_file }}" LDAP_FILE="{{ playbook_dir + '/formatted-' + computers_file }}" node {{ playbook_dir }}/ldif-convert.js
+      shell: AD_FILE="{{ playbook_dir + '/' + computers_file }}" LDAP_FILE="{{ playbook_dir + '/formatted-' + computers_file }}" node {{ playbook_dir }}/ad-convert.js
       when: inventory_hostname == "localhost"
 
      # Run ldapadd to add the OUs to ldap using the newly converted ldif file
